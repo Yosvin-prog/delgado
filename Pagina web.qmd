@@ -8,6 +8,8 @@ format:
     number-sections: true
     embed-resources: true
     output-file: index 
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Quarto
@@ -54,6 +56,36 @@ Esta es una formula cualquiera $$\frac{\left(2x-1\right)^2-1}{4}=k$$
 # modelo linial 
 ##Importar data
 ```{r}
-data <- read.csv("fb.csv", header = TRUE, sep = ",")
+fb <- read.csv("fb.csv", header = TRUE, sep = ",")
+```
+
+# modelo linial 
+##Importar data
+```{r}
+library(googlesheets4)
+library(tidyverse)
+
+url<-"https://docs.google.com/spreadsheets/d/15r7ZwcZZHbEgltlF6gSFvCTFA-CFzVBWwg3mFlRyKPs/edit?gid=172957346#gid=172957346"
+gs<-as_sheets_id(url)
+
+fb<-gs %>%
+  range_read("fb")
+```
+#Modelo linial 
+```{r}
+modelo <- lm(formula=lfa~block+geno+riego+riego*geno,data=fb)
+anova(modelo)
+
+```
+Box Plot 
+```{r}
+# Crear un boxplot de LFA por genotipo, con fill según riego
+ggplot(fb, aes(x = geno, y = lfa, fill = riego)) +
+  geom_boxplot() +
+  labs(title = "Boxplot de LFA por Genotipo y Riego",
+       x = "Genotipo",
+       y = "LFA") +
+  theme_minimal() +
+  scale_fill_manual(values = c("sequia" = "lightblue", "irrigado" = "lightgreen"))
 ```
 
