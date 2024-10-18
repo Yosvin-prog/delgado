@@ -50,3 +50,10 @@ Esta es una formula cualquiera $$\frac{\left(2x-1\right)^2-1}{4}=k$$
 2.  Conectar mi proyecto a GitHub
 3.  Tener un archivo en formato html llamado index.html
 4.  Activar GitHub pages
+
+# modelo linial 
+##Importar data
+```{r}
+data <- read.csv("fb.csv", header = TRUE, sep = ",")
+```
+
