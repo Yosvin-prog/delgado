@@ -51,41 +51,241 @@ Esta es una formula cualquiera $$\frac{\left(2x-1\right)^2-1}{4}=k$$
 1.  Tener mi proyecto
 2.  Conectar mi proyecto a GitHub
 3.  Tener un archivo en formato html llamado index.html
-4.  Activar GitHub pages
+4. Hacer push al repositotrio
+5.  Activarpaginas de GitHub 
 
 # modelo linial 
-##Importar data
+##datos importantes
 ```{r}
 fb <- read.csv("fb.csv", header = TRUE, sep = ",")
+View
 ```
 
-# modelo linial 
-##Importar data
+
+#  Modelo lineal: lfa
+
 ```{r}
-library(googlesheets4)
+modelo_lfa <- aov(formula = lfa ~ bloque + geno + riego + riego*geno, data = fb)
+
+anova(modelo_lfa)
+str(fb)
+
+plot(modelo_lfa)
+
+```
+
+###Diagrama de caja
+```{r}
+library(ggplot2)
+
+ggplot(fb, aes(x = geno, y = lfa, colour = riego)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
+  labs(title = "Boxplot con interacción de niveles de riego y genotipo",
+       x = "Interacción Riego y Genotipo",
+       y = "Area Folicar (cm^2)")
+```
+
+# Comparación De Medias
+```{r}
+library(agricolae)
+tukey_result <- HSD.test(modelo_lfa, c("geno", "riego"), group = TRUE)
+print(tukey_result)
+library(agricolae)
+
+tukey_result <- HSD.test(modelo_lfa
+                         , c("geno", "riego")
+                         , group = TRUE)
+tukey_result
+
+str(tukey_result)
+tukey_result
 library(tidyverse)
 
-url<-"https://docs.google.com/spreadsheets/d/15r7ZwcZZHbEgltlF6gSFvCTFA-CFzVBWwg3mFlRyKPs/edit?gid=172957346#gid=172957346"
-gs<-as_sheets_id(url)
+grupos <- tukey_result$groups %>% 
+  rownames_to_column("tratamientos") %>% 
+  separate(tratamientos, into = c("geno", "riego")
+           , sep = ":")
 
-fb<-gs %>%
-  range_read("fb")
+str(grupos)
 ```
-#Modelo linial 
+
 ```{r}
-modelo <- lm(formula=lfa~block+geno+riego+riego*geno,data=fb)
+str(tukey_result)
+
+library(tidyverse)
+
+mc <- tukey_result$groups %>% 
+  rownames_to_column("trat") %>% 
+  separate(trat, c("riego", "variedad")) 
+
+
+str (mc)
+```
+##Modelo lineal: hola
+```{r}
+modelo <- aov(formula = hi ~  bloque + riego + geno + riego*geno
+          , data = fb)
+
 anova(modelo)
+plot(modelo)
 
 ```
-Box Plot 
+## Modelo lineal mixto: lfa
 ```{r}
-# Crear un boxplot de LFA por genotipo, con fill según riego
-ggplot(fb, aes(x = geno, y = lfa, fill = riego)) +
-  geom_boxplot() +
-  labs(title = "Boxplot de LFA por Genotipo y Riego",
-       x = "Genotipo",
-       y = "LFA") +
-  theme_minimal() +
-  scale_fill_manual(values = c("sequia" = "lightblue", "irrigado" = "lightgreen"))
+library(lme4)
+model <- lme4::lmer(lfa ~ riego + geno + riego*geno + (1|bloque), data = fb)
+
+anova(model)
+plot(model)
+ol <- boxplot(lfa ~ riego*geno, fb)
+ol
+library(inti)
+model <- remove_outliers(data = fb
+                         , formula = lfa ~ riego + geno + riego*geno + (1|bloque)
+                         , plot_diag = T)
+model
 ```
 
+
+
+# comparacion de medias: emmeans
+
+```{r}
+
+library(emmeans)
+library(multcomp)
+library(dplyr)
+library(MASS)
+
+cm1 <- emmeans(modelo_lfa, ~ geno | riego) %>% 
+  cld(Letters = letters, reversed = T)
+
+cm1
+
+cm2 <- emmeans(modelo_lfa, ~ riego | geno) %>% 
+  cld(Letters = letters, reversed = T)
+
+cm2
+
+cm3 <- emmeans(modelo_lfa, ~ riego * geno) %>% 
+  cld(Letters = letters, reversed = T)
+
+cm3
+```
+#Agricolae: comparación de medios 
+```{r}
+modelo <- lm(formula = lfa ~  bloque + riego + geno + riego*geno
+          , data = fb)
+
+anova(modelo)
+library(agricolae)
+
+tukey_result <- HSD.test(modelo
+                         , c("geno", "riego")
+                         , group = TRUE)
+tukey_result
+plot(tukey_result)
+str(tukey_result)
+tukey_result
+library(tidyverse)
+
+grupos <- tukey_result$groups %>% 
+  rownames_to_column("tratamientos") %>% 
+  separate(tratamientos, into = c("geno", "riego")
+           , sep = ":")
+
+str(grupos)
+```
+##  Gráfico de barras
+
+```{r}
+library(ggplot2)
+
+ggplot(mc, aes(x = riego, y = lfa, fill = variedad)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +  # Barras agrupadas por variedad
+  geom_text(aes(label = groups), position = position_dodge(0.9), vjust = -0.5, size = 3) +  # Etiquetas sobre las barras
+  labs(title = "Producción de LFA por Riego y Variedad", x = "variedad", y = "LFA", fill = "riego") +  # Etiquetas de los ejes y título
+  scale_fill_manual(values = c("irrigado" = "tomato", "sequia" = "turquoise3")) +  # Colores personalizados para las variedades
+  theme_minimal() +  # Tema minimalista
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+#ensignifica: comparacion de medias 
+```{r}
+modelo <- lme4::lmer(hi ~ (1|bloque) + geno*riego
+                     , data = fb)
+
+anova(modelo)
+cm1 <- emmeans(modelo, ~ geno | riego) %>% 
+  cld(Letters = letters, reversed = T)
+cm1
+cm2 <- emmeans(modelo, ~ riego | geno) %>% 
+  cld(Letters = letters, reversed = T)
+cm2
+cm3 <- emmeans(modelo, ~ riego * geno) %>% 
+  cld(Letters = letters, reversed = T)
+cm3
+
+```
+##Gráfico
+```{r}
+dtcm <- as.data.frame(cm2) %>% 
+  rename(sig = ".group")
+
+ggplot(dtcm, aes(x = geno, y = emmean, fill = riego)) +
+  geom_bar(stat = "identity", position = "dodge", color = "black") +
+  geom_text(aes(label = sig, y = emmean*1.05),
+            position = position_dodge(width = 0.9),
+            vjust = 0) +
+  labs(x = "Genotipo", y = "HI", fill = "Riego") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle("Gráfico de barras: HI por genotipo y riego")
+```
+
+
+# Análisis multivariado
+
+```{r}
+str(fb)
+```
+##Correlación
+```{r}
+library(psych)
+
+fb %>% 
+  select_if(is.numeric) %>% 
+  dplyr::select(!c("block")) %>% 
+  pairs.panels(x = .
+               , hist.col="red"
+               , pch = 21
+               , stars = TRUE
+               , scale = FALSE
+               , lm = TRUE
+               ) 
+```
+
+
+## PCA: Análisis de componentes principales
+
+```{r}
+library(FactoMineR)
+library(cowplot)
+
+
+mv <- fb %>%
+  group_by(riego, geno) %>%
+  summarise(across(where(is.numeric), ~ mean(., na.rm = TRUE))) %>%
+  PCA(scale.unit = T, quali.sup = c(1:4), graph = F)
+
+p1 <- plot(mv,
+           choix="ind",
+           habillage=1,
+           label = "ind")
+
+p2 <- plot(mv,
+           choix="var")
+
+list(p1, p2) %>%
+  plot_grid(plotlist = ., nrow = 1)
+```
